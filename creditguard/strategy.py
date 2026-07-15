@@ -6,6 +6,7 @@ Reference: Gamma et al. (1994) Design Patterns — the Strategy pattern.
 from abc import ABC, abstractmethod
 
 from domain import LoanApplication, RiskScore
+from providers import AIProviderFactory, LocalStubFactory
 
 
 class RiskStrategy(ABC):
@@ -45,16 +46,23 @@ class RuleBasedRisk(RiskStrategy):
 class MLModelRisk(RiskStrategy):
     """Scoring delegated to an AI model client obtained via an AIProviderFactory.
 
-    TODO (do this AFTER Phase 1c, once providers.py exists): accept a client
-    object (or an AIProviderFactory) in __init__, and in score() call the
-    client with the application's data, parse whatever it returns into a
-    RiskScore. This is the strategy that test_ai_mocking.py (Phase 1h) will
-    exercise with a mocked client — no live API calls in the test suite.
-
-    For now, leave a minimal stub so strategy.py imports cleanly; wire the
-    real client call once providers.py exists.
+    The factory is injected (defaulting to LocalStubFactory), so
+    test_ai_mocking.py can later swap in a mock client without changing
+    this class - the same dependency-injection idea LocalStubFactory itself
+    demonstrates one level down.
     """
+    def __init__(self, factory: AIProviderFactory = None):
+        self._factory = factory or LocalStubFactory()
 
+    def score(self, application: LoanApplication) -> RiskScore:
+        client = self._factory.create_client()
+        builder = self._factory.create_prompt_builder()
+        prompt = builder.build_prompt(application)
+        response = client.complete(prompt)
+        return RiskScore(
+            value=min(len(response) / 100.0, 1.0),
+            explanation=f"AI model response: {response}",
+        )
 
 # TODO (optional, cut first if time is short — see BUILD_PLAN.md scope-cut order):
 # class ChallengerRisk(RiskStrategy):
