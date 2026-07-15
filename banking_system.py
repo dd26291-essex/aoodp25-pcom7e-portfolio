@@ -57,6 +57,9 @@ class BankAccount(ABC):
             raise InvalidAmountError("amount must be positive.")
         self.account_number = account_number   # public: an identifier, not a secret
         self._balance = initial_balance         # non-public: only changed via methods
+        # RLock (not Lock): Bank.transfer() acquires this from outside before
+        # calling _apply_debit/_apply_credit, so re-entrancy matters here
+        # (Python Software Foundation, 2024, threading docs).
         self._lock = threading.RLock()
 
     @abstractmethod
@@ -97,6 +100,22 @@ class BankAccount(ABC):
         with self._lock:
             return self._balance
 
+    def _apply_debit(self, amount):
+        """Subtract amount from the balance. Assumes the caller already
+        holds self._lock - used by Bank.transfer(), which must hold both
+        accounts' locks simultaneously across the whole operation to stay
+        atomic, so it cannot go through withdraw()'s own locking. Keeping
+        the affordability check and the arithmetic here (not in Bank) means
+        _balance is still only ever touched from inside this class."""
+        if self._balance - amount < self._min_balance():
+            raise InsufficientFundsError(self._balance, amount)
+        self._balance -= amount
+
+    def _apply_credit(self, amount):
+        """Add amount to the balance. Assumes the caller already holds
+        self._lock (see _apply_debit)."""
+        self._balance += amount
+
     def __repr__(self):
         # type(self).__name__ prints the actual subclass name — polymorphism in action.
         return f"{type(self).__name__}({self.account_number}, balance={self._balance:.2f})"
@@ -114,9 +133,13 @@ class SavingsAccount(BankAccount):
 
     def add_interest(self):
         """Add one period's interest (balance * rate) to the balance."""
-        interest = self._balance * self.interest_rate
-        self._balance += interest
-        return f"interest amount added={interest}"
+        # Same lock as deposit/withdraw: read-modify-write must be atomic,
+        # or a concurrent deposit/withdraw could interleave with this and
+        # lose an update (the same race condition demonstrated earlier).
+        with self._lock:
+            interest = self._balance * self.interest_rate
+            self._balance += interest
+            return f"interest amount added={interest}"
 
 
 class CurrentAccount(BankAccount):
@@ -166,17 +189,19 @@ class Bank:
         src = self.get_account(src_number)
         dst = self.get_account(dst_number)
 
-        # Consistent lock ordering: always acquire the lower account_number first.
-        # This breaks the circular-wait condition — two reverse transfers cannot deadlock.
+        # Canonical lock ordering to break circular wait (Coffman et al., 1971):
+        # always acquire the lower account_number first, regardless of transfer
+        # direction, so two simultaneous reverse transfers cannot deadlock.
         first, second = sorted([src, dst], key=lambda a: a.account_number)
 
         with first._lock:
             with second._lock:
-                # Both locks held — check affordability then move money atomically.
-                if src._balance - amount < src._min_balance():
-                    raise InsufficientFundsError(src._balance, amount)
-                src._balance -= amount
-                dst._balance += amount
+                # Both locks held — the debit/credit methods do the
+                # affordability check and the arithmetic; Bank never touches
+                # _balance directly, preserving BankAccount's encapsulation
+                # even though the atomicity requires locking from outside it.
+                src._apply_debit(amount)
+                dst._apply_credit(amount)
 
 
 # ── TransactionSimulator ──────────────────────────────────────────────────────

@@ -7,7 +7,7 @@ them, because a transfer must coordinate two accounts atomically.
 
 import threading
 
-from .exceptions import AccountNotFoundError, InsufficientFundsError
+from .exceptions import AccountNotFoundError
 
 
 class Bank:
@@ -52,14 +52,16 @@ class Bank:
         src = self.get_account(src_number)
         dst = self.get_account(dst_number)
 
-        # Consistent lock ordering: always acquire the lower account_number first.
-        # This breaks the circular-wait condition — two reverse transfers cannot deadlock.
+        # Canonical lock ordering to break circular wait (Coffman et al., 1971):
+        # always acquire the lower account_number first, regardless of transfer
+        # direction, so two simultaneous reverse transfers cannot deadlock.
         first, second = sorted([src, dst], key=lambda a: a.account_number)
 
         with first._lock:
             with second._lock:
-                # Both locks held — check affordability then move money atomically.
-                if src._balance - amount < src._min_balance():
-                    raise InsufficientFundsError(src._balance, amount)
-                src._balance -= amount
-                dst._balance += amount
+                # Both locks held — the debit/credit methods do the
+                # affordability check and the arithmetic; Bank never touches
+                # _balance directly, preserving BankAccount's encapsulation
+                # even though the atomicity requires locking from outside it.
+                src._apply_debit(amount)
+                dst._apply_credit(amount)

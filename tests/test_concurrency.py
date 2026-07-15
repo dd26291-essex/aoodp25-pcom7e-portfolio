@@ -56,6 +56,25 @@ class TestThreadSafety(unittest.TestCase):
 
         self.assertEqual(account.get_balance(), 1000)
 
+    def test_concurrent_interest_compounds_correctly(self):
+        """Scenario 11 — 50 threads each call add_interest() once: the
+        result must match compounding applied strictly one at a time.
+        Proves the lock added to add_interest() prevents the same
+        read-modify-write race that Scenario 9a guards against in deposit()."""
+        account = SavingsAccount("S3", 10000.0, interest_rate=0.01)
+
+        def task():
+            account.add_interest()
+
+        threads = [threading.Thread(target=task) for _ in range(50)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        expected = 10000.0 * (1.01 ** 50)
+        self.assertAlmostEqual(account.get_balance(), expected, places=6)
+
 
 class TestTransfer(unittest.TestCase):
 
