@@ -64,7 +64,23 @@ class MLModelRisk(RiskStrategy):
             explanation=f"AI model response: {response}",
         )
 
-# TODO (optional, cut first if time is short — see BUILD_PLAN.md scope-cut order):
-# class ChallengerRisk(RiskStrategy):
-#     """Runs alongside the champion strategy to compare scores without affecting
-#     the live decision — the "runtime behavioural flexibility" argument made concrete."""
+class ChallengerRisk(RiskStrategy):
+    """Runs a challenger strategy alongside a champion to compare scores,
+    without letting the challenger affect the live decision - the
+    champion/challenger (shadow deployment) pattern used to trial a new
+    model against a live one before switching over.
+    """
+    def __init__(self, champion: RiskStrategy, challenger: RiskStrategy):
+        self._champion = champion
+        self._challenger = challenger
+        self.last_comparison = None
+
+    def score(self, application: LoanApplication) -> RiskScore:
+        champion_score = self._champion.score(application)
+        challenger_score = self._challenger.score(application)
+        self.last_comparison = {
+            "champion": champion_score,
+            "challenger": challenger_score,
+            "agreement": abs(champion_score.value - challenger_score.value) < 0.1,
+        }
+        return champion_score
