@@ -6,6 +6,7 @@ Reference: Gamma et al. (1994) Design Patterns - Abstract Factory.
 from abc import ABC, abstractmethod
 
 from domain import LoanApplication
+from security import get_api_key
 
 
 class AIClient(ABC):
@@ -26,13 +27,7 @@ class PromptBuilder(ABC):
 
 
 class AIProviderFactory(ABC):
-    """Produces one matched AIClient + PromptBuilder pair.
-
-    TODO: declare the two abstract methods every concrete factory must
-    provide. Signatures:
-        def create_client(self) -> AIClient: ...
-        def create_prompt_builder(self) -> PromptBuilder: ...
-    """
+    """Produces one matched AIClient + PromptBuilder pair."""
     @abstractmethod
     def create_client(self) -> AIClient:
         ...
@@ -68,14 +63,24 @@ class LocalStubFactory(AIProviderFactory):
         return SimplePromptBuilder()
 
 
-class AnthropicFactory(AIProviderFactory):
-    """Simulates what a real Anthropic-backed factory would look like.
+class AnthropicClient(AIClient):
+    """Simulates what a real Anthropic-backed client would look like: reads
+    its API key from the environment (never a literal, per OWASP guidance),
+    so the key can never leak into version control. The response itself is
+    still simulated deterministically - swapping in a real SDK call here
+    would require no change anywhere else in the codebase."""
 
-    TODO (after LocalStubFactory works): mirror its shape, but imagine this
-    is where a real integration would read an API key from an environment
-    variable (never a literal - this is your secure-coding evidence for
-    Task 1) and construct a real client. For this capstone, the client can
-    still just simulate a response deterministically like LocalStubClient -
-    the point is showing the pattern lets you swap providers, not shipping
-    a production AI integration.
-    """
+    def __init__(self):
+        self._api_key = get_api_key("ANTHROPIC_API_KEY")
+
+    def complete(self, prompt: str) -> str:
+        return f"anthropic-simulated-response: prompt length {len(prompt)}"
+
+
+class AnthropicFactory(AIProviderFactory):
+    """Simulates what a real Anthropic-backed factory would look like."""
+    def create_client(self) -> AIClient:
+        return AnthropicClient()
+
+    def create_prompt_builder(self) -> PromptBuilder:
+        return SimplePromptBuilder()

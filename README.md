@@ -11,11 +11,12 @@ Abstract Factory, a Model Registry, and a Feature Store.
 ## Contents
 
 ```
-banking/            Unit 6 thread-safe banking system (modular package)
-banking_system.py   The single-file combined build, as submitted for Unit 6
-tests/               unittest suite for the banking system (15 tests)
-creditguard/         Capstone: AI-assisted credit/fraud decisioning service (in progress)
-diagrams/            UML class + sequence diagrams, scalability chart
+banking/             Unit 6 thread-safe banking system (modular package)
+banking_system.py    The single-file combined build, as submitted for Unit 6
+tests/                unittest suite for the banking system (15 tests)
+creditguard/          Capstone: AI-assisted credit/fraud decisioning service
+  tests/               unittest suite for the capstone (26 tests)
+diagrams/             UML class + sequence diagrams, scalability chart
 ```
 
 ## Unit 6 — Thread-safe banking system
@@ -52,17 +53,27 @@ required for the module's End of Module Assignment:
 
 | Pattern | File | Purpose |
 |---|---|---|
-| Strategy | `creditguard/strategy.py` | Interchangeable risk-scoring algorithms (rule-based vs AI-model-backed), swappable at runtime |
-| Abstract Factory | `creditguard/providers.py` | Swaps a whole family of AI-provider objects (client, embedder, tokeniser) coherently |
+| Strategy | `creditguard/strategy.py` | Interchangeable risk-scoring algorithms (rule-based, AI-model-backed, and a champion/challenger comparison), swappable at runtime |
+| Abstract Factory | `creditguard/providers.py` | Swaps a whole family of AI-provider objects (client + prompt builder) coherently — a local deterministic stub and a simulated Anthropic-backed factory |
 | Decorator | `creditguard/decorators.py` | Logging, audit, and rate-limiting layered onto any risk scorer without subclassing |
-| Visitor | `creditguard/visitor.py` | Separates portfolio analytics/reporting from account structure |
-| Model Registry | `creditguard/registry.py` | Model lifecycle and versioning; invariant — exactly one model in production |
-| Feature Store | `creditguard/features.py` | One feature definition shared by training and serving |
+| Visitor | `creditguard/visitor.py` | Generates a plain-language explainability report per strategy type via double dispatch, without any reporting logic living inside the strategies themselves |
+| Model Registry | `creditguard/registry.py` | Model lifecycle and versioning; invariant — exactly one model version in production at a time |
+| Feature Store | `creditguard/features.py` | One feature definition shared by training and serving, avoiding train/serve skew |
+| Secure coding | `creditguard/security.py` | API keys read from the environment (never a literal), log redaction |
 
-**Run the tests** (once implemented):
+**Run the tests:**
 
 ```
+cd creditguard
 python -m unittest discover -s tests -v
+```
+
+**Expected output:** 26 tests, all passing:
+
+```
+Ran 26 tests in 0.011s
+
+OK
 ```
 
 `tests/test_ai_mocking.py` exercises the AI-backed strategy with `unittest.mock` — no live API calls,

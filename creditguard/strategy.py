@@ -15,6 +15,13 @@ class RiskStrategy(ABC):
     def score(self, application: LoanApplication) -> RiskScore:
         ...
 
+    @abstractmethod
+    def accept(self, visitor):
+        """Double dispatch hook for the Visitor pattern (visitor.py):
+        each concrete strategy calls the visit method matching its own
+        type, so the visitor never needs an isinstance() check."""
+        ...
+
 
 class RuleBasedRisk(RiskStrategy):
     """Deterministic, explainable scoring using two hand-written rules.
@@ -42,6 +49,9 @@ class RuleBasedRisk(RiskStrategy):
             explanation="; ".join(reasons) or "no risk factors triggered",
         )
 
+    def accept(self, visitor):
+        return visitor.visit_rule_based(self)
+
 
 class MLModelRisk(RiskStrategy):
     """Scoring delegated to an AI model client obtained via an AIProviderFactory.
@@ -64,6 +74,10 @@ class MLModelRisk(RiskStrategy):
             explanation=f"AI model response: {response}",
         )
 
+    def accept(self, visitor):
+        return visitor.visit_ml_model(self)
+
+
 class ChallengerRisk(RiskStrategy):
     """Runs a challenger strategy alongside a champion to compare scores,
     without letting the challenger affect the live decision - the
@@ -84,3 +98,6 @@ class ChallengerRisk(RiskStrategy):
             "agreement": abs(champion_score.value - challenger_score.value) < 0.1,
         }
         return champion_score
+
+    def accept(self, visitor):
+        return visitor.visit_challenger(self)
