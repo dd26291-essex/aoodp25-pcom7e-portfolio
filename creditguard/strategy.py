@@ -9,30 +9,37 @@ from domain import LoanApplication, RiskScore
 
 
 class RiskStrategy(ABC):
-    """Common interface every risk-scoring algorithm must implement.
-
-    Whatever calls `score()` should never need to know or care which concrete
-    strategy it is holding — that is the whole point of the pattern. Compare
-    this shape to BankAccount(ABC) from Unit 6: one abstract method, several
-    concrete subclasses, polymorphic dispatch at the call site.
-
-    TODO: declare the one abstract method every strategy must provide.
-    Signature suggestion: def score(self, application: LoanApplication) -> RiskScore
-    """
-
-    # TODO: @abstractmethod def score(self, application: LoanApplication) -> RiskScore: ...
+    """Common interface every risk-scoring algorithm must implement."""
+    @abstractmethod
+    def score(self, application: LoanApplication) -> RiskScore:
+        ...
 
 
 class RuleBasedRisk(RiskStrategy):
-    """Deterministic, explainable scoring using simple hand-written rules.
+    """Deterministic, explainable scoring using two hand-written rules.
 
-    TODO: implement score(). Ideas for rules (keep it simple — 3-5 checks):
-    - amount relative to some income/limit field on the application
-    - a hard reject above some threshold
-    - each rule you apply should feed into RiskScore.explanation so the
-      decision is auditable (this is your evidence for the "black-box
-      coupling" discussion in Task 3).
+    Each rule that fires appends its reasoning to RiskScore.explanation, so
+    the result is auditable rather than an opaque number.
     """
+    def score(self, application: LoanApplication) -> RiskScore:
+        reasons = []
+        risk = 0.0
+
+        # rule 1: loan amount relative to income
+        if application.amount > application.annual_income * 3:
+            risk += 0.5
+            reasons.append(f"amount {application.amount} exceeds 3x annual income")
+
+        # rule 2: existing debt burden
+        debt_ratio = application.existing_debt / application.annual_income
+        if debt_ratio > 0.4:
+            risk += 0.3
+            reasons.append(f"existing debt is {debt_ratio:.0%} of income")
+
+        return RiskScore(
+            value=min(risk, 1.0),
+            explanation="; ".join(reasons) or "no risk factors triggered",
+        )
 
 
 class MLModelRisk(RiskStrategy):

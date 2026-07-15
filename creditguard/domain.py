@@ -5,38 +5,33 @@ from dataclasses import dataclass
 
 @dataclass(frozen=True)
 class LoanApplication:
-    """An immutable snapshot of one loan application.
+    """An immutable snapshot of one loan application."""
+    application_id: str
+    amount: float
+    annual_income: float
+    existing_debt: float
 
-    TODO: pick the fields a risk decision actually needs. At minimum you will
-    want an identifier, the requested amount, and something the strategies can
-    use to differentiate low-risk from high-risk applicants (e.g. an income
-    figure, an existing-debt figure, a credit history length). Keep it small —
-    this is a demonstration, not a real underwriting model.
-    """
-    # TODO: applicant_id: str
-    # TODO: amount: float
-    # TODO: ... your fields here
+    def __post_init__(self):
+        # existing_debt may legitimately be zero; amount and income cannot.
+        if self.annual_income <= 0:
+            raise ValueError(f"annual_income must be positive, got {self.annual_income}")
+        if self.amount <= 0:
+            raise ValueError(f"amount must be positive, got {self.amount}")
+        if self.existing_debt < 0:
+            raise ValueError(f"existing_debt cannot be negative, got {self.existing_debt}")
 
 
 @dataclass(frozen=True)
 class RiskScore:
-    """The output of any RiskStrategy: a score plus the reasoning behind it.
-
-    TODO: decide the shape. A numeric score (e.g. 0.0-1.0, probability of
-    default) is standard, but you also need *why* — an explanation string or a
-    list of factors — because Task 2 asks you to show auditability/explain-
-    ability, and an opaque float alone cannot support that argument.
-    """
-    # TODO: value: float
-    # TODO: explanation: str
+    """The output of any RiskStrategy: a numeric score plus a human-readable reason."""
+    value: float
+    explanation: str
 
 
 @dataclass(frozen=True)
 class Decision:
-    """The final approve/decline outcome, derived from a RiskScore.
-
-    TODO: what does a loan officer (or an audit log) need to see? Consider:
-    approved: bool, score: RiskScore, threshold used, and a timestamp so the
-    AuditVisitor (Phase 1e) has something to report on.
-    """
-    # TODO: your fields here
+    """The final approve/decline outcome, derived from a RiskScore."""
+    application_id: str
+    approved: bool
+    score: RiskScore
+    timestamp: str
