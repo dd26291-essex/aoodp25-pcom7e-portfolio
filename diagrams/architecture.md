@@ -1,6 +1,6 @@
 # Architecture Diagrams
 
-## 1. Unit 6 — Banking system class diagram
+## 1. Unit 6: Banking system class diagram
 
 ```mermaid
 classDiagram
@@ -46,7 +46,7 @@ classDiagram
     TransactionSimulator ..> Bank : drives
 ```
 
-## 2. Unit 6 — `Bank.transfer()` lock-acquisition sequence
+## 2. Unit 6: `Bank.transfer()` lock-acquisition sequence
 
 Shows the deadlock-prevention mechanism: both locks are always acquired in
 the same order (lower `account_number` first), regardless of transfer
@@ -74,7 +74,7 @@ sequenceDiagram
     B-->>T: transfer complete
 ```
 
-## 3. creditguard — Pattern relationships
+## 3. creditguard: Pattern relationships
 
 ```mermaid
 classDiagram
