@@ -197,7 +197,7 @@ mock_factory.create_client.return_value.complete.assert_called_once_with(&quot;m
 </main>
 <footer>Anonymised submission for AOODP25_PCOM7E &middot; single-page e-Portfolio.</footer>
 <script>
-const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('visible')})},{threshold:.12});
+const io=new IntersectionObserver((es)=>{es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');io.unobserve(e.target)}})},{threshold:0,rootMargin:'0px 0px -12% 0px'});
 document.querySelectorAll('.reveal').forEach(el=>io.observe(el));
 const links=[...document.querySelectorAll('nav a')];
 const map=new Map(links.map(a=>[a.getAttribute('href').slice(1),a]));
