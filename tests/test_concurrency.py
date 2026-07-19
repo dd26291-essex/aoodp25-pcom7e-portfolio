@@ -5,7 +5,6 @@ under heavy concurrency, and bidirectional transfers must never deadlock. Run:
     python -m unittest discover -s tests
 
 Reference: Python threading docs — https://docs.python.org/3/library/threading.html
-Test structure assisted by Claude (Anthropic) and reviewed/understood by the author.
 """
 
 import unittest

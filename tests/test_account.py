@@ -5,7 +5,6 @@ call one method (act), check one outcome (assert). Run with:
     python -m unittest discover -s tests
 
 Reference: Python unittest docs — https://docs.python.org/3/library/unittest.html
-Test structure assisted by Claude (Anthropic) and reviewed/understood by the author.
 """
 
 import unittest
